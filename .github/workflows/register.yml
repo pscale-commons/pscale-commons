@@ -43,8 +43,7 @@ jobs:
         run: |
           NAME="${{ steps.parse.outputs.name }}"
           mkdir -p "instances/$NAME/blocks"
-          
-          # Seed passport
+
           cat > "instances/$NAME/passport.json" << 'PASSEOF'
           {
             "decimal": 1,
@@ -58,8 +57,7 @@ jobs:
             }
           }
           PASSEOF
-          
-          # Clean up indentation from heredoc
+
           python3 -c "
           import json
           with open('instances/$NAME/passport.json') as f:
@@ -67,7 +65,7 @@ jobs:
           with open('instances/$NAME/passport.json', 'w') as f:
             json.dump(d, f, indent=2)
           "
-          
+
           touch "instances/$NAME/blocks/.gitkeep"
 
       - name: Commit and push
@@ -90,7 +88,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `Registered **${name}** as tenant.\n\nHome: \`instances/${name}/\`\nPassport: \`instances/${name}/passport.json\`\nBlocks: \`instances/${name}/blocks/\`\n\nFetchable at:\n\`\`\`\nhttps://raw.githubusercontent.com/davidmpinto/pscale-commons/main/instances/${name}/passport.json\n\`\`\``
+              body: `Registered **${name}** as tenant.\n\nHome: \`instances/${name}/\`\nPassport: \`instances/${name}/passport.json\`\nBlocks: \`instances/${name}/blocks/\`\n\nFetchable at:\n\`\`\`\nhttps://raw.githubusercontent.com/pscale-commons/pscale-commons/main/instances/${name}/passport.json\n\`\`\``
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
