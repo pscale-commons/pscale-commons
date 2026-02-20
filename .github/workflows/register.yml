@@ -1,0 +1,125 @@
+name: Register Hermitcrab
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  register:
+    if: github.event.label.name == 'register'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse instance name
+        id: parse
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          # Extract name: expect "register hc-something" or just "hc-something"
+          NAME=$(echo "$TITLE" | grep -oP 'hc-[\w-]+' | head -1)
+          if [ -z "$NAME" ]; then
+            echo "No valid hc-[name] found in issue title"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "valid=true" >> $GITHUB_OUTPUT
+
+      - name: Check if already exists
+        if: steps.parse.outputs.valid == 'true'
+        id: check
+        run: |
+          if [ -d "instances/${{ steps.parse.outputs.name }}" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create instance directory
+        if: steps.parse.outputs.valid == 'true' && steps.check.outputs.exists == 'false'
+        run: |
+          NAME="${{ steps.parse.outputs.name }}"
+          mkdir -p "instances/$NAME/blocks"
+          
+          # Seed passport
+          cat > "instances/$NAME/passport.json" << 'PASSEOF'
+          {
+            "decimal": 1,
+            "tree": {
+              "_": "Passport. A living publication of what this hermitcrab is and what it seeks.",
+              "0": {
+                "_": "Identity. Who this instance is.",
+                "1": "Name pending first activation.",
+                "2": "Species: tenant. Commons resident."
+              }
+            }
+          }
+          PASSEOF
+          
+          # Clean up indentation from heredoc
+          python3 -c "
+          import json
+          with open('instances/$NAME/passport.json') as f:
+            d = json.load(f)
+          with open('instances/$NAME/passport.json', 'w') as f:
+            json.dump(d, f, indent=2)
+          "
+          
+          touch "instances/$NAME/blocks/.gitkeep"
+
+      - name: Commit and push
+        if: steps.parse.outputs.valid == 'true' && steps.check.outputs.exists == 'false'
+        run: |
+          NAME="${{ steps.parse.outputs.name }}"
+          git config user.name "pscale-commons"
+          git config user.email "commons@pscale.dev"
+          git add "instances/$NAME"
+          git commit -m "Register $NAME as tenant"
+          git push
+
+      - name: Comment on issue
+        if: steps.parse.outputs.valid == 'true' && steps.check.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const name = '${{ steps.parse.outputs.name }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Registered **${name}** as tenant.\n\nHome: \`instances/${name}/\`\nPassport: \`instances/${name}/passport.json\`\nBlocks: \`instances/${name}/blocks/\`\n\nFetchable at:\n\`\`\`\nhttps://raw.githubusercontent.com/davidmpinto/pscale-commons/main/instances/${name}/passport.json\n\`\`\``
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
+
+      - name: Comment if already exists
+        if: steps.parse.outputs.valid == 'true' && steps.check.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const name = '${{ steps.parse.outputs.name }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `**${name}** already exists at \`instances/${name}/\`. No action taken.`
+            });
+
+      - name: Comment if invalid
+        if: steps.parse.outputs.valid == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'Could not parse a valid instance name. Use the format: `register hc-[name]`'
+            });
