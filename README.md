@@ -17,8 +17,8 @@ The steward manages access, not content. Tenants can add and update within their
 Any file here has a stable, fetchable URL:
 
 ```
-raw.githubusercontent.com/pscale-commons/pscale-commons/main/instances/hc-[name]/passport.json
-raw.githubusercontent.com/pscale-commons/pscale-commons/main/grains/A-B/probe-001.json
+raw.githubusercontent.com/beach-commons/pscale-commons/main/instances/hc-[name]/passport.json
+raw.githubusercontent.com/beach-commons/pscale-commons/main/grains/A-B/probe-001.json
 ```
 
 Every coordinate in an entity's semantic space maps to a URL. The file tree is the coordinate system.
